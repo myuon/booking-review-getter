@@ -21,7 +21,11 @@ func main() {
 	// 	log.Fatal(err)
 	// }
 
-	if err := fetchReviewsSince(client, "property_ids.txt", "reviews.json", "2023-06-01"); err != nil {
+	// if err := fetchReviewsSince(client, "property_ids.txt", "reviews.json", "2023-06-01"); err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	if err := removeDuplicates("reviews.json", "reviews_unique.json"); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -33,7 +37,7 @@ func writeAllPropertyIds(client *v2.APIClient, filepath string) error {
 	}
 	defer file.Close()
 
-	for page := 0; page < 1000; page++ {
+	for page := 1; page < 1000; page++ {
 		resp, _, err := client.PropertiesAPI.PropertiesGet(context.Background()).Page(int32(page)).Execute()
 		if err != nil {
 			return err
@@ -75,9 +79,13 @@ func fetchReviewsSince(client *v2.APIClient, propIdFilePath string, filepath str
 		return err
 	}
 
-	from := since
 	for _, propId := range propIds {
+		log.Printf("Fetching reviews for PropId %v", propId)
+
+		from := since
 		for page := 0; page < 1000; page++ {
+			time.Sleep(1500 * time.Millisecond)
+
 			resp, h, err := client.ChannelsBookingComAPI.
 				ChannelsBookingReviewsGet(context.Background()).
 				PropertyId(int32(propId)).
@@ -90,12 +98,13 @@ func fetchReviewsSince(client *v2.APIClient, propIdFilePath string, filepath str
 				log.Printf("headers: %v", h.Header)
 			}
 
+			log.Printf("PropId %v, Page %v, from %v, got %v", propId, page, from, len(resp.Data))
+
 			// 日が被っている関係で次のページに行っても1件以上取得される場合がある
 			if len(resp.Data) < 100 {
 				break
 			}
 
-			log.Printf("PropId %v, Page %v, from %v, got %v", propId, page, from, len(resp.Data))
 			for _, review := range resp.Data {
 				bs, _ := json.Marshal(review)
 				file.Write(bs)
@@ -104,8 +113,43 @@ func fetchReviewsSince(client *v2.APIClient, propIdFilePath string, filepath str
 				from = review.GetCreatedTimestamp()[0:10]
 			}
 		}
+	}
 
-		time.Sleep(10 * time.Second)
+	return nil
+}
+
+func removeDuplicates(filepath string, resultFilepath string) error {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	resultFile, err := os.Create(resultFilepath)
+	if err != nil {
+		return err
+	}
+	defer resultFile.Close()
+
+	decoder := json.NewDecoder(file)
+	prev := ""
+	for {
+		var review v2.BookingReview
+
+		if err := decoder.Decode(&review); err != nil {
+			break
+		}
+
+		current := review.GetReviewId()
+		if current == prev {
+			continue
+		}
+
+		bs, _ := json.Marshal(review)
+		resultFile.Write(bs)
+		resultFile.WriteString("\n")
+
+		prev = current
 	}
 
 	return nil
