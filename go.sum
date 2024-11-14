@@ -1,0 +1,4 @@
+github.com/matsuri-tech/beds24-sdk-go v0.4.0 h1:iEXnr3Fm71KDBGodyPfK7Vfo9Wo/c1in4kKw4WQozUQ=
+github.com/matsuri-tech/beds24-sdk-go v0.4.0/go.mod h1:JSJqxgO+u+zQC0cdlbLVz70te/vzogs4PiEG8+6SEeQ=
+github.com/matsuri-tech/common-error-go v0.8.2 h1:uaRKFuPmnSJ+YhlnWrTCBSDm0wxvJhR7VfLqpVEv1Ks=
+github.com/matsuri-tech/common-error-go v0.8.2/go.mod h1:gV61qK6RqFS1pFhhN3pOLG3qcdxALofnQnICC8nI7hs=
