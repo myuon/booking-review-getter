@@ -21,9 +21,9 @@ func main() {
 	// 	log.Fatal(err)
 	// }
 
-	// if err := fetchReviewsSince(client, "property_ids.txt", "reviews.json", "2023-06-01"); err != nil {
-	// 	log.Fatal(err)
-	// }
+	if err := fetchReviewsSince(client, "property_ids.txt", "reviews.json", "2023-06-01"); err != nil {
+		log.Fatal(err)
+	}
 
 	if err := removeDuplicates("reviews.json", "reviews_unique.json"); err != nil {
 		log.Fatal(err)
@@ -100,17 +100,17 @@ func fetchReviewsSince(client *v2.APIClient, propIdFilePath string, filepath str
 
 			log.Printf("PropId %v, Page %v, from %v, got %v", propId, page, from, len(resp.Data))
 
-			// 日が被っている関係で次のページに行っても1件以上取得される場合がある
-			if len(resp.Data) < 100 {
-				break
-			}
-
 			for _, review := range resp.Data {
 				bs, _ := json.Marshal(review)
 				file.Write(bs)
 				file.WriteString("\n")
 
 				from = review.GetCreatedTimestamp()[0:10]
+			}
+
+			// 日が被っている関係で次のページに行っても1件以上取得される場合がある
+			if len(resp.Data) < 100 {
+				break
 			}
 		}
 	}
@@ -132,7 +132,7 @@ func removeDuplicates(filepath string, resultFilepath string) error {
 	defer resultFile.Close()
 
 	decoder := json.NewDecoder(file)
-	prev := ""
+	visited := map[string]bool{}
 	for {
 		var review v2.BookingReview
 
@@ -141,7 +141,7 @@ func removeDuplicates(filepath string, resultFilepath string) error {
 		}
 
 		current := review.GetReviewId()
-		if current == prev {
+		if _, ok := visited[current]; ok {
 			continue
 		}
 
@@ -149,7 +149,7 @@ func removeDuplicates(filepath string, resultFilepath string) error {
 		resultFile.Write(bs)
 		resultFile.WriteString("\n")
 
-		prev = current
+		visited[current] = true
 	}
 
 	return nil
